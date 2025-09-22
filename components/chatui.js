@@ -63,7 +63,7 @@ export default function ChatUI() {
     } else {
       newLog.push({
         role: "bot",
-        text: `入力ありがとうございました。以下が職務経歴書です👇
+        text: `入力ありがとうございました。以下が職務経歴書です。
 
 ▼基本情報
 ・氏名：${newAnswers.name || ""}
