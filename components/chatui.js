@@ -10,6 +10,7 @@ export default function ChatUI() {
   const [answers, setAnswers] = useState({});
   const [multiSelect, setMultiSelect] = useState([]);
   const [singleSelect, setSingleSelect] = useState(null);
+  const [selectedSalary, setSelectedSalary] = useState("");
 
   const bottomRef = useRef(null);
 
