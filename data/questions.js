@@ -23,14 +23,7 @@ export const questions = [
   },
   {
     key: "salary",
-    text: "希望年収を選んでください（1つ選択）",
-    type: "single",
-    options: [
-      "300万円未満",
-      "300〜500万円",
-      "500〜700万円",
-      "700〜1000万円",
-      "1000万円以上",
-    ],
+    text: "希望年収を選択してください",
+    type: "salary", // ← typeだけ定義する
   },
 ];
