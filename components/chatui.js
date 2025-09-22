@@ -1,4 +1,4 @@
-// components/chatui.js
+// components/ChatUI.js
 import { useState, useEffect, useRef } from "react";
 import { questions } from "../data/questions";
 import { colors } from "../data/colors";
@@ -272,6 +272,46 @@ export default function ChatUI() {
               }}
             >
               送信
+            </button>
+          </div>
+        )}
+
+        {/* 年収プルダウン */}
+        {current?.type === "salary" && (
+          <div>
+            <label className="block mb-2 font-semibold text-gray-700">
+              希望年収
+            </label>
+            <select
+              className="w-full border border-gray-300 rounded-md p-2"
+              value={selectedSalary}
+              onChange={(e) => setSelectedSalary(e.target.value)}
+            >
+              <option value="">選択してください</option>
+              <option value="300">300万円以上</option>
+              <option value="400">400万円以上</option>
+              <option value="500">500万円以上</option>
+              <option value="600">600万円以上</option>
+              <option value="700">700万円以上</option>
+              <option value="800">800万円以上</option>
+              <option value="900">900万円以上</option>
+              <option value="1000">1000万円以上</option>
+            </select>
+            <button
+              className="send-button"
+              onClick={() => {
+                if (!selectedSalary) return;
+                saveAnswer(selectedSalary);
+                setSelectedSalary("");
+              }}
+              disabled={!selectedSalary}
+              style={{
+                marginTop: 8,
+                opacity: !selectedSalary ? 0.6 : 1,
+                cursor: !selectedSalary ? "not-allowed" : "pointer",
+              }}
+            >
+              決定
             </button>
           </div>
         )}
