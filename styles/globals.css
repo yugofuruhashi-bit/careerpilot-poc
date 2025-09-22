@@ -17,7 +17,7 @@
 
 /* 送信ボタンをChatGPT風の緑に */
 .send-button {
-  background: #10a37f;   /* ChatGPT緑 */
+  background: #FF8C42;   /* オレンジ */
   color: white;
   font-weight: bold;
   border: none;
@@ -28,5 +28,5 @@
 }
 
 .send-button:hover {
-  background: #0d8f6a;   /* 濃い緑 */
+  background: #E65C00;   /* 濃いオレンジ */
 }
