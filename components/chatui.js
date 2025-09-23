@@ -10,18 +10,34 @@ export default function ChatUI() {
   const [answers, setAnswers] = useState({});
   const [multiSelect, setMultiSelect] = useState([]);
   const [singleSelect, setSingleSelect] = useState(null);
-  const [selectedSalary, setSelectedSalary] = useState("");
+  const [loading, setLoading] = useState(false); // AI出力中の状態
 
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    // 常に最新メッセージまでスクロール
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatLog]);
+  }, [chatLog, loading]);
+
+  // --- バリデーション ---
+  const validatePhone = (value) => /^\d{10,11}$/.test(value.replace(/-/g, ""));
+  const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   // --- テキスト送信 ---
   const handleSendText = () => {
     if (!input.trim()) return;
+
+    const current = questions[step];
+
+    if (current.key === "phone" && !validatePhone(input)) {
+      alert("電話番号が正しくありません。10桁または11桁の数字を入力してください。");
+      return;
+    }
+
+    if (current.key === "email" && !validateEmail(input)) {
+      alert("メールアドレスが正しくありません。形式を確認してください。");
+      return;
+    }
+
     saveAnswer(input);
     setInput("");
   };
@@ -33,6 +49,7 @@ export default function ChatUI() {
     else next.push(value);
     setMultiSelect(next);
   };
+
   const handleMultiConfirm = () => {
     if (multiSelect.length === 0) return;
     saveAnswer(multiSelect.join("、"));
@@ -43,6 +60,7 @@ export default function ChatUI() {
   const handleSingleToggle = (value) => {
     setSingleSelect((prev) => (prev === value ? null : value));
   };
+
   const handleSingleConfirm = () => {
     if (!singleSelect) return;
     saveAnswer(singleSelect);
@@ -50,7 +68,7 @@ export default function ChatUI() {
   };
 
   // --- 回答保存処理 ---
-  const saveAnswer = (answer) => {
+  const saveAnswer = async (answer) => {
     const current = questions[step];
     const newAnswers = { ...answers, [current.key]: answer };
     setAnswers(newAnswers);
@@ -61,27 +79,59 @@ export default function ChatUI() {
     if (nextStep < questions.length) {
       newLog.push({ role: "bot", text: questions[nextStep].text });
       setStep(nextStep);
+      setChatLog(newLog);
     } else {
-      newLog.push({
-        role: "bot",
-        text: `入力ありがとうございました。以下が職務経歴書です。
+      // ここでAIに投げる
+      setLoading(true);
+      const pendingLog = [
+        ...newLog,
+        { role: "bot", text: "AIが経歴書を出力中のためお待ちください" }, // 仮メッセージ
+      ];
+      setChatLog(pendingLog);
 
-▼基本情報
-・氏名：${newAnswers.name || ""}
-・電話：${newAnswers.phone || ""}
-・メール：${newAnswers.email || ""}
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "system",
+                content:
+                  "あなたは優秀なキャリアコンサルタントです。ユーザーの回答を元に職務経歴書を整形してください。",
+              },
+              {
+                role: "user",
+                content:
+                  `以下の情報を基に職務経歴書を作成してください:\n${JSON.stringify(newAnswers)}`,
+              },
+            ],
+          }),
+        });
 
-▼希望条件
-・職種：${newAnswers.jobType || ""}
-・業界：${newAnswers.industry || ""}
-・希望年収：${newAnswers.salary || ""}
+        const data = await response.json();
+        const aiText =
+          data.reply ??
+          data.content ??
+          data.choices?.[0]?.message?.content ??
+          "生成に失敗しました。時間を置いて再度お試しください。";
 
-▼自己PR
-（AIが生成予定）
-        `,
-      });
+        setChatLog([
+          ...newLog,
+          {
+            role: "bot",
+            text: `入力ありがとうございました。以下がAIによる職務経歴書です。\n\n${aiText}`,
+          },
+        ]);
+      } catch (e) {
+        setChatLog([
+          ...newLog,
+          { role: "bot", text: "エラーが発生しました。もう一度お試しください。" },
+        ]);
+      } finally {
+        setLoading(false);
+      }
     }
-    setChatLog(newLog);
   };
 
   const current = questions[step];
@@ -147,7 +197,7 @@ export default function ChatUI() {
         <div ref={bottomRef} />
       </div>
 
-      {/* 入力欄（常に下に固定） */}
+      {/* 入力欄 */}
       <div
         style={{
           padding: 8,
@@ -184,14 +234,14 @@ export default function ChatUI() {
           </div>
         )}
 
-        {/* 複数選択 */}
+        {/* 複数選択（3×3グリッド） */}
         {current?.type === "multi" && (
           <div>
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
@@ -200,15 +250,15 @@ export default function ChatUI() {
                   key={i}
                   onClick={() => handleMultiToggle(opt)}
                   style={{
-                    padding: 8,
+                    padding: 12,
                     border: multiSelect.includes(opt)
                       ? `2px solid ${colors.primary}`
                       : "1px solid #ccc",
-                    borderRadius: 4,
+                    borderRadius: 6,
                     background: multiSelect.includes(opt)
                       ? colors.primaryLight
                       : colors.white,
-                    textAlign: "left",
+                    textAlign: "center",
                   }}
                 >
                   {opt}
@@ -229,14 +279,14 @@ export default function ChatUI() {
           </div>
         )}
 
-        {/* シングル選択 */}
+        {/* シングル選択（3×3グリッド） */}
         {current?.type === "single" && (
           <div>
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
@@ -245,17 +295,15 @@ export default function ChatUI() {
                   key={i}
                   onClick={() => handleSingleToggle(opt)}
                   style={{
-                    padding: 8,
+                    padding: 12,
                     border:
                       singleSelect === opt
                         ? `2px solid ${colors.primary}`
                         : "1px solid #ccc",
-                    borderRadius: 4,
+                    borderRadius: 6,
                     background:
-                      singleSelect === opt
-                        ? colors.primaryLight
-                        : colors.white,
-                    textAlign: "left",
+                      singleSelect === opt ? colors.primaryLight : colors.white,
+                    textAlign: "center",
                   }}
                 >
                   {opt}
@@ -272,46 +320,6 @@ export default function ChatUI() {
               }}
             >
               送信
-            </button>
-          </div>
-        )}
-
-        {/* 年収プルダウン */}
-        {current?.type === "salary" && (
-          <div>
-            <label className="block mb-2 font-semibold text-gray-700">
-              希望年収
-            </label>
-            <select
-              className="w-full border border-gray-300 rounded-md p-2"
-              value={selectedSalary}
-              onChange={(e) => setSelectedSalary(e.target.value)}
-            >
-              <option value="">選択してください</option>
-              <option value="300">300万円以上</option>
-              <option value="400">400万円以上</option>
-              <option value="500">500万円以上</option>
-              <option value="600">600万円以上</option>
-              <option value="700">700万円以上</option>
-              <option value="800">800万円以上</option>
-              <option value="900">900万円以上</option>
-              <option value="1000">1000万円以上</option>
-            </select>
-            <button
-              className="send-button"
-              onClick={() => {
-                if (!selectedSalary) return;
-                saveAnswer(selectedSalary);
-                setSelectedSalary("");
-              }}
-              disabled={!selectedSalary}
-              style={{
-                marginTop: 8,
-                opacity: !selectedSalary ? 0.6 : 1,
-                cursor: !selectedSalary ? "not-allowed" : "pointer",
-              }}
-            >
-              決定
             </button>
           </div>
         )}
